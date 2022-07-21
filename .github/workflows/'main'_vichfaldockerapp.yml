@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - vichfaldockerapp
+
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to registry
+      uses: docker/login-action@v1
+      with:
+        registry: https://github.com/tawfeex/geststages.git/
+        username: ${{ secrets.AzureAppService_ContainerUsername_d1ff3177bf4e4bad96870d5c704b2e6a }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_44d6117049c24c5c95b4243976fa7f04 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: github.com/tawfeex/geststages.git/${{ secrets.AzureAppService_ContainerUsername_d1ff3177bf4e4bad96870d5c704b2e6a }}/geststages:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'vichfaldockerapp'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_ebe46e60bb954b87a3b64f9f394e42b7 }}
+        images: 'github.com/tawfeex/geststages.git/${{ secrets.AzureAppService_ContainerUsername_d1ff3177bf4e4bad96870d5c704b2e6a }}/geststages:${{ github.sha }}'
